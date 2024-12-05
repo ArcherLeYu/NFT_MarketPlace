@@ -198,8 +198,8 @@ const App = () => {
             ))}
           </div>
 
-          <Auction signer={signer} />
-        </>
+          <Auction signer={signer} currentContract={currentContract} />
+          </>
       )}
     </div>
   );

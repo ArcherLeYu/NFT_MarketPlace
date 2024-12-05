@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { ethers, parseEther } from "ethers";
-import { Auction_ADDRESS, Auction_ABI, CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
+import { ethers, parseEther, isAddress } from "ethers";
+import { Auction_ADDRESS, Auction_ABI } from "./contract";
 
-const Auction = ({ signer }) => {
+const Auction = ({ signer, currentContract }) => {
   const [auctionDetails, setAuctionDetails] = useState({
     tokenId: "",
     startPrice: "",
@@ -15,13 +15,25 @@ const Auction = ({ signer }) => {
 
   const approveNFT = async (tokenId) => {
     try {
-      if (!signer) return alert("Wallet not connected");
+      if (!signer || !currentContract) return alert("Wallet or collection not connected");
 
-      // Connect to the NFT contract
-      const nftContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      // Check if the currentContract and Auction_ADDRESS are valid
+      const network = await signer.provider.getNetwork();
+      const isValidContract = isAddress(Auction_ADDRESS);
+      if (!isValidContract) {
+        return alert("Invalid Auction contract address.");
+      }
+      console.log(`Using Auction contract on network: ${network.chainId}`);
+        
+      // // Verify ownership
+      // const owner = await currentContract.ownerOf(tokenId);
+      // console.log("Token Owner:", owner);
+      // if (owner.toLowerCase() !== (await signer.getAddress()).toLowerCase()) {
+      //   return alert("You are not the owner of this NFT.");
+      // }
 
       // Approve the Auction contract for the specific tokenId
-      const tx = await nftContract.approve(Auction_ADDRESS, tokenId);
+      const tx = await currentContract.approve(Auction_ADDRESS, tokenId);
       console.log("Approval transaction sent:", tx.hash);
 
       // Wait for the transaction to be mined
@@ -34,7 +46,7 @@ const Auction = ({ signer }) => {
   };
 
   const createAuction = async () => {
-    if (!signer) return alert("Wallet not connected");
+    if (!signer || !currentContract) return alert("Wallet not connected");
 
     const { tokenId, startPrice, duration } = auctionDetails;
 
@@ -43,6 +55,13 @@ const Auction = ({ signer }) => {
 
       // Approve the NFT before creating an auction
       await approveNFT(tokenId);
+
+      // Confirm the token is approved
+      const isApproved = await currentContract.getApproved(tokenId);
+      console.log("Approved Address:", isApproved);
+      if (isApproved.toLowerCase() !== Auction_ADDRESS.toLowerCase()) {
+        return alert("Token is not properly approved for the auction contract.");
+      }
 
       // Connect to the Auction contract
       const auctionContract = new ethers.Contract(Auction_ADDRESS, Auction_ABI, signer);
